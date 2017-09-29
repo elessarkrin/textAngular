@@ -4,13 +4,13 @@
     define('textAngular', ["rangy","rangy/lib/rangy-selectionsaverestore"], function (a0,b1) {
       return (root['textAngular.name'] = factory(a0,b1));
     });
-  } else if (typeof exports === 'object') {
+  } else if (typeof module === 'object' && module.exports) {
     // Node. Does not work with strict CommonJS, but
     // only CommonJS-like environments that support module.exports,
     // like Node.
     module.exports = factory(require("rangy"),require("rangy/lib/rangy-selectionsaverestore"));
   } else {
-    root['textAngular'] = factory(rangy);
+    root['textAngular'] = factory(root["rangy"]);
   }
 }(this, function (rangy) {
 
@@ -116,10 +116,10 @@ angular.module('textAngularSetup', [])
     //
     keyMappings : [],
     toolbar: [
-        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'pre', 'quote'],
+        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'pre', 'quote', 'speak'],
         ['bold', 'italics', 'underline', 'strikeThrough', 'ul', 'ol', 'redo', 'undo', 'clear'],
         ['justifyLeft','justifyCenter','justifyRight','justifyFull','indent','outdent'],
-        ['html', 'insertImage', 'insertLink', 'insertVideo', 'wordcount', 'charcount']
+        ['html', 'insertImage', 'insertLink', 'insertVideo', 'insertAudio', 'wordcount', 'charcount']
     ],
     classes: {
         focussed: "focussed",
@@ -202,6 +202,9 @@ angular.module('textAngularSetup', [])
     p: {
         tooltip: 'Paragraph'
     },
+    speak: {
+        tooltip: 'Text to Speech'
+    },
     pre: {
         tooltip: 'Preformatted text'
     },
@@ -262,6 +265,10 @@ angular.module('textAngularSetup', [])
         tooltip: 'Insert video',
         dialogPrompt: 'Please enter a youtube URL to embed'
     },
+  insertAudio: {
+    tooltip: 'Insert audio',
+    dialogPrompt: 'Please enter an URL to embed'
+  },
     insertLink: {
         tooltip: 'Insert / edit link',
         dialogPrompt: "Please enter a URL to insert"
@@ -495,6 +502,14 @@ angular.module('textAngularSetup', [])
         },
         activeState: function(){ return this.$editor().queryFormatBlockState('p'); }
     });
+      taRegisterTool('speak', {
+        tooltiptext: taTranslations.speak.tooltip,
+        iconclass: 'fa fa-commenting-o',
+        action: function(){
+          this.$editor().wrapSelection('wrapBlock', '<SPEAK>');
+        },
+        activeState: function(){ return this.$editor().queryFormatBlockState('speak'); }
+      });
     // key: pre -> taTranslations[key].tooltip, taTranslations[key].buttontext
     taRegisterTool('pre', {
         buttontext: 'pre',
@@ -951,6 +966,36 @@ angular.module('textAngularSetup', [])
             action: taToolFunctions.imgOnSelectAction
         }
     });
+      taRegisterTool('insertAudio', {
+        iconclass: 'fa fa-music',
+        tooltiptext: taTranslations.insertAudio.tooltip,
+        action: function(){
+          var urlPrompt;
+          urlPrompt = $window.prompt(taTranslations.insertAudio.dialogPrompt, 'https://');
+          // block javascript here
+          /* istanbul ignore else: if it's javascript don't worry - though probably should show some kind of error message */
+          if (!blockJavascript(urlPrompt)) {
+        
+            if (urlPrompt && urlPrompt !== '' && urlPrompt !== 'https://') {
+              
+                // create the embed link
+                var urlLink = urlPrompt;
+                // create the HTML
+                // for all options see: http://stackoverflow.com/questions/2068344/how-do-i-get-a-youtube-video-thumbnail-from-the-youtube-api
+                // maxresdefault.jpg seems to be undefined on some.
+                var embed = '<audio controls=""><source src="' + urlLink + '>Your browser does not support the audio element.</audio>';
+                
+                return this.$editor().wrapSelection('insertHTML', embed, true);
+              
+            }
+          }
+        }/*,
+        onElementSelect: {
+          element: 'audio',
+          onlyWithAttrs: ['ta-insert-video'],
+          action: taToolFunctions.imgOnSelectAction
+        }*/
+      });
     taRegisterTool('insertLink', {
         tooltiptext: taTranslations.insertLink.tooltip,
         iconclass: 'fa fa-link',
@@ -1119,10 +1164,10 @@ function getDomFromHtml(html)
 
 // Global to textAngular REGEXP vars for block and list elements.
 
-var BLOCKELEMENTS = /^(address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video)$/i;
+var BLOCKELEMENTS = /^(address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|speak)$/i;
 var LISTELEMENTS = /^(ul|li|ol)$/i;
 // updated VALIDELEMENTS to include #text and span so that we can use nodeName instead of tagName
-var VALIDELEMENTS = /^(#text|span|address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|li)$/i;
+var VALIDELEMENTS = /^(#text|span|address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|li|speak)$/i;
 
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Compatibility
@@ -1226,8 +1271,8 @@ angular.module('textAngular.factories', [])
 .factory('taBrowserTag', [function(){
     return function(tag){
         /* istanbul ignore next: ie specific test */
-        if(!tag) return (_browserDetect.ie <= 8)? 'P' : 'p';
-        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'P' : 'p';
+        if(!tag) return (_browserDetect.ie <= 8)? 'DIV' : 'div';
+        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'DIV' : 'div';
         else return (_browserDetect.ie <= 8)? tag.toUpperCase() : tag;
     };
 }]).factory('taApplyCustomRenderers', ['taCustomRenderers', 'taDOM', function(taCustomRenderers, taDOM){
@@ -1843,6 +1888,18 @@ angular.module('textAngular.DOM', ['textAngular.factories'])
                             __h = __h.replace(/<br>/i, '');  // nothing
                             selectedElement.innerHTML = __h;
                         }
+                    } else if (selectedElement.tagName.toLowerCase() === 'speak' &&
+                      ourSelection && ourSelection.start &&
+                      ourSelection.start.offset === 1 &&
+                      ourSelection.end.offset === 1) {
+                      //console.log('p special');
+                      // we need to remove the </br> that firefox adds!
+                      __h = selectedElement.innerHTML;
+                      if (/<br>/i.test(__h)) {
+                        // Firefox adds <br>'s and so we remove the <br>
+                        __h = __h.replace(/<br>/i, '&#8203;');  // no space-space
+                        selectedElement.innerHTML = __h;
+                      }
                     }
                 }
             }catch(e){}
@@ -2076,6 +2133,73 @@ angular.module('textAngular.DOM', ['textAngular.factories'])
                 // refocus on the shown display element, this fixes a bug when using firefox
                 $target[0].focus();
                 return;
+            }else if(command.toLowerCase() === 'wrapblock'){
+              optionsTagName = options.toLowerCase().replace(/[<>]/ig, '');
+              
+              $target = $selected;
+              // find the first blockElement
+              while(!$target[0].tagName || !$target[0].tagName.match(BLOCKELEMENTS) && !$target.parent().attr('contenteditable')){
+                $target = $target.parent();
+                /* istanbul ignore next */
+                tagName = ($target[0].tagName || '').toLowerCase();
+              }
+              if(tagName === optionsTagName){
+                // $target is wrap element
+                _nodes = $target.children();
+                var target_parent = $target.parent();
+  
+                for (i = 0; i < _nodes.length; i++) {
+                    var newChild = angular.element(_nodes[i].outerHTML);
+                  angular.element(newChild).appendTo(target_parent[0]);
+                }
+  
+                target_parent[0].removeChild($target[0]);
+                $target = target_parent;
+                
+              }else{
+                // default wrap behaviour
+                _nodes = taSelection.getOnlySelectedElements();
+                if(_nodes.length === 0) {
+                  // no nodes at all....
+                  _nodes = [$target[0]];
+                }
+                // find the parent block element if any of the nodes are inline or text
+                for(i = 0; i < _nodes.length; i++){
+                  if(_nodes[i].nodeType === 3 || !_nodes[i].tagName.match(BLOCKELEMENTS)){
+                    while(_nodes[i].nodeType === 3 || !_nodes[i].tagName || !_nodes[i].tagName.match(BLOCKELEMENTS)){
+                      _nodes[i] = _nodes[i].parentNode;
+                    }
+                  }
+                }
+                // remove any duplicates from the array of _nodes!
+                _nodes = _nodes.filter(function(value, index, self) {
+                  return self.indexOf(value) === index;
+                });
+                // remove all whole taTextElement if it is here... unless it is the only element!
+                if (_nodes.length>1) {
+                  _nodes = _nodes.filter(function (value, index, self) {
+                    return !(value.nodeName.toLowerCase() === 'div' && /^taTextElement/.test(value.id));
+                  });
+                }
+                
+                  //console.log(optionsTagName, _nodes);
+                  // regular block elements replace other block elements
+                var newWrap = angular.element(options);
+                var parent = _nodes[0].parentNode;
+                
+                  for (i = 0; i < _nodes.length; i++) {
+  
+                    newWrap[0].innerHTML += _nodes[i].innerHTML;
+                    parent.removeChild(_nodes[i]);
+                  }
+                parent.appendChild(newWrap[0]);
+                $target = angular.element(newWrap);
+              }
+              taSelection.setSelectionToElementEnd($target[0]);
+              // looses focus when we have the whole container selected and no text!
+              // refocus on the shown display element, this fixes a bug when using firefox
+              $target[0].focus();
+              return;
             }else if(command.toLowerCase() === 'createlink'){
                 /* istanbul ignore next: firefox specific fix */
                 if (tagName === 'a') {
@@ -2868,7 +2992,7 @@ angular.module('textAngular.taBind', ['textAngular.factories', 'textAngular.DOM'
             }
 
             // set the default to be a paragraph value
-            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'p';
+            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'div';
             /* istanbul ignore next: ie specific test */
             if(attrs.taDefaultWrap === ''){
                 _defaultVal = '';

@@ -149,7 +149,7 @@ angular.module('textAngular.taBind', ['textAngular.factories', 'textAngular.DOM'
             }
 
             // set the default to be a paragraph value
-            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'p';
+            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'div';
             /* istanbul ignore next: ie specific test */
             if(attrs.taDefaultWrap === ''){
                 _defaultVal = '';

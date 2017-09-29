@@ -2,8 +2,8 @@ angular.module('textAngular.factories', [])
 .factory('taBrowserTag', [function(){
     return function(tag){
         /* istanbul ignore next: ie specific test */
-        if(!tag) return (_browserDetect.ie <= 8)? 'P' : 'p';
-        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'P' : 'p';
+        if(!tag) return (_browserDetect.ie <= 8)? 'DIV' : 'div';
+        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'DIV' : 'div';
         else return (_browserDetect.ie <= 8)? tag.toUpperCase() : tag;
     };
 }]).factory('taApplyCustomRenderers', ['taCustomRenderers', 'taDOM', function(taCustomRenderers, taDOM){

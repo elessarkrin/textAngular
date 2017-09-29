@@ -89,10 +89,10 @@ function getDomFromHtml(html)
 
 // Global to textAngular REGEXP vars for block and list elements.
 
-var BLOCKELEMENTS = /^(address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video)$/i;
+var BLOCKELEMENTS = /^(address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|speak)$/i;
 var LISTELEMENTS = /^(ul|li|ol)$/i;
 // updated VALIDELEMENTS to include #text and span so that we can use nodeName instead of tagName
-var VALIDELEMENTS = /^(#text|span|address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|li)$/i;
+var VALIDELEMENTS = /^(#text|span|address|article|aside|audio|blockquote|canvas|center|dd|div|dl|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hgroup|hr|noscript|ol|output|p|pre|section|table|tfoot|ul|video|li|speak)$/i;
 
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim#Compatibility
@@ -196,8 +196,8 @@ angular.module('textAngular.factories', [])
 .factory('taBrowserTag', [function(){
     return function(tag){
         /* istanbul ignore next: ie specific test */
-        if(!tag) return (_browserDetect.ie <= 8)? 'P' : 'p';
-        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'P' : 'p';
+        if(!tag) return (_browserDetect.ie <= 8)? 'DIV' : 'div';
+        else if(tag === '') return (_browserDetect.ie === undefined)? 'div' : (_browserDetect.ie <= 8)? 'DIV' : 'div';
         else return (_browserDetect.ie <= 8)? tag.toUpperCase() : tag;
     };
 }]).factory('taApplyCustomRenderers', ['taCustomRenderers', 'taDOM', function(taCustomRenderers, taDOM){
@@ -813,6 +813,18 @@ angular.module('textAngular.DOM', ['textAngular.factories'])
                             __h = __h.replace(/<br>/i, '');  // nothing
                             selectedElement.innerHTML = __h;
                         }
+                    } else if (selectedElement.tagName.toLowerCase() === 'speak' &&
+                      ourSelection && ourSelection.start &&
+                      ourSelection.start.offset === 1 &&
+                      ourSelection.end.offset === 1) {
+                      //console.log('p special');
+                      // we need to remove the </br> that firefox adds!
+                      __h = selectedElement.innerHTML;
+                      if (/<br>/i.test(__h)) {
+                        // Firefox adds <br>'s and so we remove the <br>
+                        __h = __h.replace(/<br>/i, '&#8203;');  // no space-space
+                        selectedElement.innerHTML = __h;
+                      }
                     }
                 }
             }catch(e){}
@@ -1046,6 +1058,73 @@ angular.module('textAngular.DOM', ['textAngular.factories'])
                 // refocus on the shown display element, this fixes a bug when using firefox
                 $target[0].focus();
                 return;
+            }else if(command.toLowerCase() === 'wrapblock'){
+              optionsTagName = options.toLowerCase().replace(/[<>]/ig, '');
+              
+              $target = $selected;
+              // find the first blockElement
+              while(!$target[0].tagName || !$target[0].tagName.match(BLOCKELEMENTS) && !$target.parent().attr('contenteditable')){
+                $target = $target.parent();
+                /* istanbul ignore next */
+                tagName = ($target[0].tagName || '').toLowerCase();
+              }
+              if(tagName === optionsTagName){
+                // $target is wrap element
+                _nodes = $target.children();
+                var target_parent = $target.parent();
+  
+                for (i = 0; i < _nodes.length; i++) {
+                    var newChild = angular.element(_nodes[i].outerHTML);
+                  angular.element(newChild).appendTo(target_parent[0]);
+                }
+  
+                target_parent[0].removeChild($target[0]);
+                $target = target_parent;
+                
+              }else{
+                // default wrap behaviour
+                _nodes = taSelection.getOnlySelectedElements();
+                if(_nodes.length === 0) {
+                  // no nodes at all....
+                  _nodes = [$target[0]];
+                }
+                // find the parent block element if any of the nodes are inline or text
+                for(i = 0; i < _nodes.length; i++){
+                  if(_nodes[i].nodeType === 3 || !_nodes[i].tagName.match(BLOCKELEMENTS)){
+                    while(_nodes[i].nodeType === 3 || !_nodes[i].tagName || !_nodes[i].tagName.match(BLOCKELEMENTS)){
+                      _nodes[i] = _nodes[i].parentNode;
+                    }
+                  }
+                }
+                // remove any duplicates from the array of _nodes!
+                _nodes = _nodes.filter(function(value, index, self) {
+                  return self.indexOf(value) === index;
+                });
+                // remove all whole taTextElement if it is here... unless it is the only element!
+                if (_nodes.length>1) {
+                  _nodes = _nodes.filter(function (value, index, self) {
+                    return !(value.nodeName.toLowerCase() === 'div' && /^taTextElement/.test(value.id));
+                  });
+                }
+                
+                  //console.log(optionsTagName, _nodes);
+                  // regular block elements replace other block elements
+                var newWrap = angular.element(options);
+                var parent = _nodes[0].parentNode;
+                
+                  for (i = 0; i < _nodes.length; i++) {
+  
+                    newWrap[0].innerHTML += _nodes[i].innerHTML;
+                    parent.removeChild(_nodes[i]);
+                  }
+                parent.appendChild(newWrap[0]);
+                $target = angular.element(newWrap);
+              }
+              taSelection.setSelectionToElementEnd($target[0]);
+              // looses focus when we have the whole container selected and no text!
+              // refocus on the shown display element, this fixes a bug when using firefox
+              $target[0].focus();
+              return;
             }else if(command.toLowerCase() === 'createlink'){
                 /* istanbul ignore next: firefox specific fix */
                 if (tagName === 'a') {
@@ -1838,7 +1917,7 @@ angular.module('textAngular.taBind', ['textAngular.factories', 'textAngular.DOM'
             }
 
             // set the default to be a paragraph value
-            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'p';
+            if(attrs.taDefaultWrap === undefined) attrs.taDefaultWrap = 'div';
             /* istanbul ignore next: ie specific test */
             if(attrs.taDefaultWrap === ''){
                 _defaultVal = '';

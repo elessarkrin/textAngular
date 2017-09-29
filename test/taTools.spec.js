@@ -274,6 +274,7 @@ describe('taTools test tool actions', function(){
             expect(findButton('insertImage').attr('title')).toBe('Insert image');
             expect(findButton('html').attr('title')).toBe('Toggle html / Rich Text');
             expect(findButton('insertVideo').attr('title')).toBe('Insert video');
+            expect(findButton('insertAudio').attr('title')).toBe('Insert audio');
             expect(findButton('insertLink').attr('title')).toBe('Insert / edit link');
 
 

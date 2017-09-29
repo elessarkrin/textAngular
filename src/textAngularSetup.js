@@ -100,10 +100,10 @@ angular.module('textAngularSetup', [])
     //
     keyMappings : [],
     toolbar: [
-        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'pre', 'quote'],
+        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'pre', 'quote', 'speak'],
         ['bold', 'italics', 'underline', 'strikeThrough', 'ul', 'ol', 'redo', 'undo', 'clear'],
         ['justifyLeft','justifyCenter','justifyRight','justifyFull','indent','outdent'],
-        ['html', 'insertImage', 'insertLink', 'insertVideo', 'wordcount', 'charcount']
+        ['html', 'insertImage', 'insertLink', 'insertVideo', 'insertAudio', 'wordcount', 'charcount']
     ],
     classes: {
         focussed: "focussed",
@@ -186,6 +186,9 @@ angular.module('textAngularSetup', [])
     p: {
         tooltip: 'Paragraph'
     },
+    speak: {
+        tooltip: 'Text to Speech'
+    },
     pre: {
         tooltip: 'Preformatted text'
     },
@@ -246,6 +249,10 @@ angular.module('textAngularSetup', [])
         tooltip: 'Insert video',
         dialogPrompt: 'Please enter a youtube URL to embed'
     },
+  insertAudio: {
+    tooltip: 'Insert audio',
+    dialogPrompt: 'Please enter an URL to embed'
+  },
     insertLink: {
         tooltip: 'Insert / edit link',
         dialogPrompt: "Please enter a URL to insert"
@@ -479,6 +486,14 @@ angular.module('textAngularSetup', [])
         },
         activeState: function(){ return this.$editor().queryFormatBlockState('p'); }
     });
+      taRegisterTool('speak', {
+        tooltiptext: taTranslations.speak.tooltip,
+        iconclass: 'fa fa-commenting-o',
+        action: function(){
+          this.$editor().wrapSelection('wrapBlock', '<SPEAK>');
+        },
+        activeState: function(){ return this.$editor().queryFormatBlockState('speak'); }
+      });
     // key: pre -> taTranslations[key].tooltip, taTranslations[key].buttontext
     taRegisterTool('pre', {
         buttontext: 'pre',
@@ -935,6 +950,36 @@ angular.module('textAngularSetup', [])
             action: taToolFunctions.imgOnSelectAction
         }
     });
+      taRegisterTool('insertAudio', {
+        iconclass: 'fa fa-music',
+        tooltiptext: taTranslations.insertAudio.tooltip,
+        action: function(){
+          var urlPrompt;
+          urlPrompt = $window.prompt(taTranslations.insertAudio.dialogPrompt, 'https://');
+          // block javascript here
+          /* istanbul ignore else: if it's javascript don't worry - though probably should show some kind of error message */
+          if (!blockJavascript(urlPrompt)) {
+        
+            if (urlPrompt && urlPrompt !== '' && urlPrompt !== 'https://') {
+              
+                // create the embed link
+                var urlLink = urlPrompt;
+                // create the HTML
+                // for all options see: http://stackoverflow.com/questions/2068344/how-do-i-get-a-youtube-video-thumbnail-from-the-youtube-api
+                // maxresdefault.jpg seems to be undefined on some.
+                var embed = '<audio controls=""><source src="' + urlLink + '>Your browser does not support the audio element.</audio>';
+                
+                return this.$editor().wrapSelection('insertHTML', embed, true);
+              
+            }
+          }
+        }/*,
+        onElementSelect: {
+          element: 'audio',
+          onlyWithAttrs: ['ta-insert-video'],
+          action: taToolFunctions.imgOnSelectAction
+        }*/
+      });
     taRegisterTool('insertLink', {
         tooltiptext: taTranslations.insertLink.tooltip,
         iconclass: 'fa fa-link',
